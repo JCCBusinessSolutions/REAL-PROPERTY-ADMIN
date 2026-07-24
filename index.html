@@ -1003,13 +1003,13 @@ function resizeImageToBase64(file, maxDim = 1600, quality = 0.82) {
   });
 }
 
-async function apiPost(action, payload) {
+async function apiPost(action, payload, extra = {}) {
   if (!GAS_WEB_APP_URL) {
     throw new Error('Not connected — reconnect from the Connection card in Settings.');
   }
   const res = await fetch(GAS_WEB_APP_URL, {
     method: 'POST',
-    body: JSON.stringify({ action, data: JSON.stringify(payload) })
+    body: JSON.stringify({ action, data: JSON.stringify(payload), ...extra })
   });
   if (!res.ok) throw new Error('Network error');
   return res.json();
@@ -1488,7 +1488,7 @@ document.getElementById('contentForm').addEventListener('submit', async (e) => {
   const original = btn.textContent;
   btn.textContent = 'Saving…'; btn.disabled = true;
   try{
-    const res = await apiPost(id ? 'updateCollectionItem' : 'addCollectionItem', Object.assign({ type: activeCollection }, payload));
+    const res = await apiPost(id ? 'updateCollectionItem' : 'addCollectionItem', payload, { type: activeCollection });
     if(res.success){
       showToast(id ? 'Saved' : 'Added');
       closeContentModal();
