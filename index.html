@@ -84,10 +84,10 @@
   <header class="bg-navy sticky top-0 z-30 shadow-luxury">
     <div class="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <span class="w-8 h-8 rounded-full border border-gold/60 flex items-center justify-center">
+        <span id="adminLogoIcon" class="w-8 h-8 rounded-full border border-gold/60 flex items-center justify-center overflow-hidden shrink-0">
           <svg viewBox="0 0 24 24" class="w-4 h-4 text-gold" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
         </span>
-        <span class="font-serif text-white text-base sm:text-lg tracking-wide">Prestige <span class="text-gold">Admin</span></span>
+        <span id="adminBrandNameText" class="font-serif text-white text-base sm:text-lg tracking-wide truncate">Prestige <span class="text-gold">Admin</span></span>
       </div>
       <div class="flex items-center gap-2 sm:gap-3">
         <button id="refreshBtn" aria-label="Refresh" class="w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-gold hover:bg-white/10 transition-colors">
@@ -241,7 +241,14 @@
 
       <div class="card p-6 sm:p-8">
         <h3 class="font-serif text-xl font-semibold text-navy mb-1">Brand</h3>
-        <p class="text-xs text-navy/45 mb-5">Shown in the navbar, loading screen, footer, and browser tab.</p>
+        <p class="text-xs text-navy/45 mb-5">Shown on the website's navbar, loading screen, footer, and browser tab — and right here in this admin panel's header too.</p>
+        <div class="mb-4">
+          <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-2">Logo (replaces the icon in this admin's top-left corner)</label>
+          <div class="flex items-center gap-4">
+            <div id="setBrandLogoPreview" class="w-16 h-16 rounded-full bg-navy/5 border border-navy/10 bg-cover bg-center flex items-center justify-center text-navy/30 text-[10px] text-center shrink-0">No logo</div>
+            <label class="inline-flex items-center gap-2 text-xs font-bold tracking-wide uppercase text-navy bg-cream border border-navy/15 px-4 py-2.5 rounded-lg cursor-pointer hover:bg-gold/10 transition-colors">Upload Logo<input id="setBrandLogoInput" type="file" accept="image/*" class="hidden"></label>
+          </div>
+        </div>
         <div class="grid gap-4">
           <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Brand Name</label><input id="setBrandName" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
           <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Meta Description (SEO — shown in search results)</label><textarea id="setMetaDescription" rows="2" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea></div>
@@ -452,10 +459,11 @@
             <div id="pfPhotosGrid" class="flex flex-wrap gap-3 mb-3"></div>
             <label class="inline-flex items-center gap-2 text-xs font-bold tracking-wide uppercase text-navy bg-cream border border-navy/15 px-4 py-2.5 rounded-lg cursor-pointer hover:bg-gold/10 transition-colors">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              Add Photo
-              <input id="pfPhotoInput" type="file" accept="image/*" class="hidden">
+              Add Photos
+              <input id="pfPhotoInput" type="file" accept="image/*" multiple class="hidden">
             </label>
             <span id="pfPhotoUploading" class="hidden text-xs text-navy/45 ml-2">Uploading…</span>
+            <p class="text-[11px] text-navy/40 mt-2">Select multiple at once, or click "Add Photos" again any time to add more. First photo is the cover shown on the website.</p>
           </div>
 
           <div class="grid sm:grid-cols-2 gap-4">
@@ -591,6 +599,7 @@ function showDashboard(){
   document.getElementById('dashboard').classList.remove('hidden');
   document.getElementById('connectionUrlDisplay').value = GAS_WEB_APP_URL;
   loadAll();
+  loadSettings(); // fetched eagerly (not just on Settings tab click) so the topbar brand/logo shows immediately
 }
 
 document.getElementById('connectForm').addEventListener('submit', async (e) => {
@@ -1034,20 +1043,27 @@ function renderPropertyPhotos(){
 }
 
 document.getElementById('pfPhotoInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
   const uploadingEl = document.getElementById('pfPhotoUploading');
-  uploadingEl.classList.remove('hidden');
-  try {
-    const url = await uploadPhotoFile(file);
-    currentPropertyPhotos.push(url);
-    renderPropertyPhotos();
-  } catch (err) {
-    showToast(err.message || 'Photo upload failed', true);
-  } finally {
-    uploadingEl.classList.add('hidden');
-    e.target.value = '';
+  let uploaded = 0, failed = 0;
+  for (const file of files) {
+    uploadingEl.classList.remove('hidden');
+    uploadingEl.textContent = `Uploading ${uploaded + failed + 1} of ${files.length}…`;
+    try {
+      const url = await uploadPhotoFile(file);
+      currentPropertyPhotos.push(url);
+      renderPropertyPhotos(); // updates after each one so the gallery fills in progressively
+      uploaded++;
+    } catch (err) {
+      failed++;
+    }
   }
+  uploadingEl.classList.add('hidden');
+  uploadingEl.textContent = 'Uploading…'; // reset for next time
+  e.target.value = '';
+  if (failed) showToast(`${uploaded} photo${uploaded===1?'':'s'} added, ${failed} failed to upload`, true);
+  else if (uploaded > 1) showToast(`${uploaded} photos added`);
 });
 
 document.getElementById('addPropertyBtn').addEventListener('click', () => openPropertyModal(null));
@@ -1230,6 +1246,8 @@ async function loadSettings(){
       });
       setPhotoPreview('setHeroPhotoPreview', currentSettings.heroPhoto);
       setPhotoPreview('setAboutPhotoPreview', currentSettings.aboutPhoto);
+      setPhotoPreview('setBrandLogoPreview', currentSettings.brandLogo);
+      applyAdminBranding(currentSettings);
       SECTION_VISIBILITY_LIST.forEach(s => {
         const el = document.getElementById('setShow'+s.key);
         if(el) el.checked = currentSettings['show'+s.key] !== false;
@@ -1258,6 +1276,36 @@ document.getElementById('setAboutPhotoInput').addEventListener('change', async (
   catch(err){ showToast(err.message || 'Upload failed', true); }
   finally{ e.target.value=''; }
 });
+document.getElementById('setBrandLogoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if(!file) return;
+  try{
+    currentSettings.brandLogo = await uploadPhotoFile(file);
+    setPhotoPreview('setBrandLogoPreview', currentSettings.brandLogo);
+    applyAdminBranding(currentSettings); // update the top-left corner right away
+  }
+  catch(err){ showToast(err.message || 'Upload failed', true); }
+  finally{ e.target.value=''; }
+});
+
+/* =========================================================
+   ADMIN TOPBAR BRANDING
+   Reflects the Brand Name / Logo settings in this admin panel's
+   own header — not just the live website.
+========================================================== */
+function applyAdminBranding(s){
+  if(!s) return;
+  const name = s.brandName || 'Prestige Realty';
+  document.getElementById('adminBrandNameText').innerHTML =
+    `${escapeHtml(name)} <span class="text-gold">Admin</span>`;
+  document.title = `${name} | Admin Dashboard`;
+
+  const logoEl = document.getElementById('adminLogoIcon');
+  if(s.brandLogo){
+    logoEl.innerHTML = `<img src="${s.brandLogo}" class="w-full h-full object-cover" alt="${escapeHtml(name)} logo">`;
+  } else {
+    logoEl.innerHTML = `<svg viewBox="0 0 24 24" class="w-4 h-4 text-gold" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>`;
+  }
+}
 
 document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
   const btn = document.getElementById('saveSettingsBtn');
