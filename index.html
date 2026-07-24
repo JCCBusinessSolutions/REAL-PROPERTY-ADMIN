@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Prestige Realty | Admin Dashboard</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prestige Admin">
+<meta name="theme-color" content="#071A35">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { navy:{DEFAULT:'#071A35',light:'#0E2A52',dark:'#040F20'}, gold:{DEFAULT:'#D4AF37',light:'#E4C766',dark:'#B8932B'}, cream:'#FAF8F4' },
+      fontFamily: { serif:['"Playfair Display"','serif'], sans:['"Inter"','sans-serif'] },
+      boxShadow: { luxury:'0 20px 50px -15px rgba(7,26,53,.2)' }
+    }}
+  }
+</script>
+<style>
+  *{ font-family:'Inter',sans-serif; }
+  .font-serif{ font-family:'Playfair Display',serif; }
+  body{ background:#F4F2ED; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:#D4AF37; border-radius:8px; }
+  .card{ background:#fff; border-radius:16px; box-shadow:0 10px 30px -12px rgba(7,26,53,.12); }
+  .status-New{ background:#FEF3C7; color:#92400E; }
+  .status-Contacted{ background:#DBEAFE; color:#1E40AF; }
+  .status-Closed{ background:#D1FAE5; color:#065F46; }
+  .spin{ animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+  .fade-in{ animation:fadeIn .4s ease; }
+  @keyframes fadeIn{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+  input:focus, select:focus, textarea:focus, button:focus-visible{ outline:2px solid #D4AF37; outline-offset:1px; }
+  @media (max-width:640px){
+    .lead-table{ display:none; }
+  }
+  .lead-table{ width:100%; border-collapse:collapse; }
+  .lead-table th{ text-align:left; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#8b93a3; padding:12px 16px; border-bottom:1px solid #eee; }
+  .lead-table td{ padding:14px 16px; font-size:13px; border-bottom:1px solid #f2f2f2; vertical-align:top; }
+  .lead-table tr:hover{ background:#FAF8F4; }
+  .toggle-track{ transition:background-color .3s ease; }
+  .toggle-knob{ transition:transform .3s cubic-bezier(.3,1.4,.5,1); }
+</style>
+</head>
+<body class="text-navy min-h-screen">
+
+<!-- =========================================================
+     CONNECTION GATE — shown until a Web App URL is saved on
+     this device. Stored in localStorage only, never in a file.
+========================================================== -->
+<div id="connectScreen" class="hidden min-h-screen flex items-center justify-center px-6 bg-navy relative overflow-hidden">
+  <div class="absolute inset-0 opacity-[0.15]" style="background-image:radial-gradient(circle at 25% 20%,#D4AF37,transparent 45%),radial-gradient(circle at 80% 80%,#D4AF37,transparent 40%);"></div>
+  <div class="relative card w-full max-w-md p-9 fade-in">
+    <div class="text-center mb-7">
+      <span class="inline-flex w-14 h-14 rounded-full border border-gold items-center justify-center mb-4">
+        <svg viewBox="0 0 24 24" class="w-6 h-6 text-gold" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
+      </span>
+      <h1 class="font-serif text-2xl font-semibold text-navy">Connect Your Backend</h1>
+      <p class="text-xs text-navy/50 mt-2 leading-relaxed">Paste the Google Apps Script Web App URL from your Code.gs deployment. This is saved on this device only — you won't need to do this again here.</p>
+    </div>
+    <form id="connectForm" class="space-y-4">
+      <div>
+        <label class="block text-[11px] tracking-widest uppercase font-semibold text-navy/50 mb-2">Web App URL</label>
+        <input id="connectUrlInput" type="url" required placeholder="https://script.google.com/macros/s/.../exec" class="w-full rounded-xl border border-navy/15 px-4 py-3.5 text-sm outline-none focus:border-gold">
+      </div>
+      <p id="connectError" class="hidden text-red-600 text-xs text-center font-medium">Couldn't reach that URL — double-check it ends in /exec and the deployment access is set to "Anyone".</p>
+      <button type="submit" id="connectBtn" class="w-full bg-navy text-white text-sm font-bold tracking-wider uppercase py-4 rounded-xl hover:bg-navy-light transition-colors">Connect</button>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================
+     DASHBOARD
+========================================================== -->
+<div id="dashboard" class="hidden">
+
+  <!-- Topbar -->
+  <header class="bg-navy sticky top-0 z-30 shadow-luxury">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="w-8 h-8 rounded-full border border-gold/60 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" class="w-4 h-4 text-gold" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
+        </span>
+        <span class="font-serif text-white text-base sm:text-lg tracking-wide">Prestige <span class="text-gold">Admin</span></span>
+      </div>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button id="refreshBtn" aria-label="Refresh" class="w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-gold hover:bg-white/10 transition-colors">
+          <svg id="refreshIcon" class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-24">
+
+    <!-- Tabs -->
+    <div class="flex items-center gap-2 mb-8 card p-1.5 w-fit max-w-full overflow-x-auto">
+      <button id="tabLeadsBtn" class="tab-btn shrink-0 px-5 py-2.5 rounded-lg text-xs font-bold tracking-wide uppercase bg-navy text-white transition-colors">Leads</button>
+      <button id="tabPropertiesBtn" class="tab-btn shrink-0 px-5 py-2.5 rounded-lg text-xs font-bold tracking-wide uppercase text-navy/50 hover:text-navy transition-colors">Properties</button>
+      <button id="tabSettingsBtn" class="tab-btn shrink-0 px-5 py-2.5 rounded-lg text-xs font-bold tracking-wide uppercase text-navy/50 hover:text-navy transition-colors">Settings</button>
+      <button id="tabContentBtn" class="tab-btn shrink-0 px-5 py-2.5 rounded-lg text-xs font-bold tracking-wide uppercase text-navy/50 hover:text-navy transition-colors">Content</button>
+    </div>
+
+    <!-- ============ LEADS VIEW ============ -->
+    <div id="leadsView">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8">
+      <div class="card p-5">
+        <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">Total Leads</p>
+        <p id="statTotal" class="font-serif text-3xl font-bold text-navy">—</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">New</p>
+        <p id="statNew" class="font-serif text-3xl font-bold text-amber-600">—</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">Contacted</p>
+        <p id="statContacted" class="font-serif text-3xl font-bold text-blue-700">—</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">This Week</p>
+        <p id="statWeek" class="font-serif text-3xl font-bold text-navy">—</p>
+      </div>
+      <div class="card p-5 col-span-2 lg:col-span-1">
+        <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">Newsletter</p>
+        <p id="statNewsletter" class="font-serif text-3xl font-bold text-gold-dark">—</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card p-4 sm:p-5 mb-6 flex flex-col sm:flex-row gap-3 sm:items-center">
+      <div class="relative flex-1">
+        <svg class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-navy/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="searchInput" type="text" placeholder="Search by name, phone, or email..." class="w-full rounded-lg border border-navy/12 pl-11 pr-4 py-3 text-sm outline-none focus:border-gold">
+      </div>
+      <select id="statusFilter" class="rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+        <option value="all">All Statuses</option>
+        <option value="New">New</option>
+        <option value="Contacted">Contacted</option>
+        <option value="Closed">Closed</option>
+      </select>
+      <select id="sourceFilter" class="rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+        <option value="all">All Sources</option>
+      </select>
+      <button id="exportBtn" class="flex items-center justify-center gap-2 bg-navy text-white text-xs font-bold tracking-wide uppercase px-5 py-3 rounded-lg hover:bg-navy-light transition-colors whitespace-nowrap">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0-4-4m4 4 4-4M4 21h16"/></svg> Export CSV
+      </button>
+    </div>
+
+    <!-- Leads: desktop table -->
+    <div class="card overflow-x-auto mb-6">
+      <table class="lead-table">
+        <thead>
+          <tr>
+            <th>Date</th><th>Name</th><th>Contact</th><th>Source / Interest</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="leadsTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Leads: mobile cards -->
+    <div id="leadsCards" class="sm:hidden space-y-3"></div>
+
+    <div id="emptyState" class="hidden card p-12 text-center">
+      <svg class="w-10 h-10 mx-auto text-navy/20 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      <p class="text-navy/50 text-sm">No leads match your filters yet.</p>
+    </div>
+
+    <div id="loadingState" class="card p-12 text-center">
+      <svg class="w-8 h-8 mx-auto text-gold spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/></svg>
+      <p class="text-navy/40 text-xs mt-3">Loading leads…</p>
+    </div>
+    </div>
+    <!-- ============ END LEADS VIEW ============ -->
+
+    <!-- ============ PROPERTIES VIEW ============ -->
+    <div id="propertiesView" class="hidden">
+
+      <div class="card p-4 sm:p-5 mb-6 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div class="relative flex-1">
+          <svg class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-navy/35" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="propSearchInput" type="text" placeholder="Search by name or location..." class="w-full rounded-lg border border-navy/12 pl-11 pr-4 py-3 text-sm outline-none focus:border-gold">
+        </div>
+        <select id="propStatusFilter" class="rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+          <option value="all">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Reserved">Reserved</option>
+          <option value="Sold">Sold</option>
+          <option value="Draft">Draft</option>
+        </select>
+        <button id="addPropertyBtn" class="flex items-center justify-center gap-2 bg-gold text-navy text-xs font-bold tracking-wide uppercase px-5 py-3 rounded-lg hover:bg-gold-light transition-colors whitespace-nowrap">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg> Add Property
+        </button>
+      </div>
+
+      <div id="propertiesGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+
+      <div id="propEmptyState" class="hidden card p-12 text-center">
+        <p class="text-navy/50 text-sm">No properties match your filters yet.</p>
+      </div>
+      <div id="propLoadingState" class="card p-12 text-center">
+        <svg class="w-8 h-8 mx-auto text-gold spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/></svg>
+        <p class="text-navy/40 text-xs mt-3">Loading properties…</p>
+      </div>
+    </div>
+    <!-- ============ END PROPERTIES VIEW ============ -->
+
+    <!-- ============ SETTINGS VIEW ============ -->
+    <div id="settingsView" class="hidden space-y-6">
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Connection</h3>
+        <p class="text-xs text-navy/45 mb-5">Where this admin panel and your website talk to your Google Sheet.</p>
+        <div class="mb-4">
+          <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Web App URL (this device)</label>
+          <div class="flex gap-2">
+            <input id="connectionUrlDisplay" type="text" readonly class="flex-1 rounded-lg border border-navy/12 px-4 py-3 text-xs text-navy/60 bg-navy/5 outline-none">
+            <button type="button" id="copyUrlBtn" class="shrink-0 px-4 rounded-lg border border-navy/15 text-xs font-bold uppercase tracking-wide hover:bg-navy/5 transition-colors">Copy</button>
+          </div>
+          <p class="text-[11px] text-navy/40 mt-2 leading-relaxed">Paste this into <code class="bg-navy/5 px-1 rounded">GAS_WEB_APP_URL</code> inside <code class="bg-navy/5 px-1 rounded">prestige-realty-website.html</code> — that's the one file that still needs it, and only the first time you publish.</p>
+        </div>
+        <button type="button" id="changeConnectionBtn" class="text-xs font-bold uppercase tracking-wide text-red-600 hover:text-red-700 transition-colors">Disconnect / Change URL</button>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Notifications &amp; Storage</h3>
+        <p class="text-xs text-navy/45 mb-5">Where lead alerts go, and which Drive folder photo uploads are saved into.</p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Notification Email</label><input id="setAdminNotificationEmail" type="email" placeholder="you@example.com" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Drive Folder Name</label><input id="setDriveFolderName" type="text" placeholder="Prestige Realty Photos" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+        </div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Brand</h3>
+        <p class="text-xs text-navy/45 mb-5">Shown in the navbar, loading screen, footer, and browser tab.</p>
+        <div class="grid gap-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Brand Name</label><input id="setBrandName" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Meta Description (SEO — shown in search results)</label><textarea id="setMetaDescription" rows="2" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea></div>
+        </div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Social Media</h3>
+        <p class="text-xs text-navy/45 mb-5">Footer icons. Leave blank to keep an icon inactive (it will link nowhere).</p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Facebook URL</label><input id="setFacebookUrl" type="text" placeholder="https://facebook.com/yourpage" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Instagram URL</label><input id="setInstagramUrl" type="text" placeholder="https://instagram.com/yourpage" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">YouTube URL</label><input id="setYoutubeUrl" type="text" placeholder="https://youtube.com/@yourchannel" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">LinkedIn URL</label><input id="setLinkedinUrl" type="text" placeholder="https://linkedin.com/company/yourcompany" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+        </div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Section Headlines</h3>
+        <p class="text-xs text-navy/45 mb-5">The small label + big heading at the top of each section. Hero and About have their own dedicated fields above.</p>
+        <div id="sectionHeadlinesGrid" class="space-y-5"></div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Hero Section</h3>
+        <p class="text-xs text-navy/45 mb-5">The full-screen banner at the top of the homepage.</p>
+        <div class="mb-4">
+          <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-2">Background Photo</label>
+          <div id="setHeroPhotoPreview" class="w-full h-36 rounded-lg bg-navy/5 border border-navy/10 mb-2 bg-cover bg-center flex items-center justify-center text-navy/30 text-xs">No photo set</div>
+          <label class="inline-flex items-center gap-2 text-xs font-bold tracking-wide uppercase text-navy bg-cream border border-navy/15 px-4 py-2.5 rounded-lg cursor-pointer hover:bg-gold/10 transition-colors">Upload Photo<input id="setHeroPhotoInput" type="file" accept="image/*" class="hidden"></label>
+        </div>
+        <div class="grid gap-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Headline</label><input id="setHeroHeadline" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Subheadline</label><textarea id="setHeroSubheadline" rows="2" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea></div>
+        </div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">About Section</h3>
+        <p class="text-xs text-navy/45 mb-5">Story, mission/vision/values, and the stat counters.</p>
+        <div class="mb-4">
+          <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-2">About Photo</label>
+          <div id="setAboutPhotoPreview" class="w-full h-36 rounded-lg bg-navy/5 border border-navy/10 mb-2 bg-cover bg-center flex items-center justify-center text-navy/30 text-xs">No photo set</div>
+          <label class="inline-flex items-center gap-2 text-xs font-bold tracking-wide uppercase text-navy bg-cream border border-navy/15 px-4 py-2.5 rounded-lg cursor-pointer hover:bg-gold/10 transition-colors">Upload Photo<input id="setAboutPhotoInput" type="file" accept="image/*" class="hidden"></label>
+        </div>
+        <div class="grid gap-4 mb-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Label (small text above title)</label><input id="setAboutEyebrow" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Title</label><input id="setAboutTitle" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Story Text</label><textarea id="setAboutText" rows="3" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea></div>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-4 mb-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Mission</label><textarea id="setMissionText" rows="2" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Vision</label><textarea id="setVisionText" rows="2" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Core Values</label><textarea id="setValuesText" rows="2" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea></div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Properties Sold</label><input id="setStatPropertiesSold" type="number" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Happy Clients</label><input id="setStatHappyClients" type="number" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Years Experience</label><input id="setStatYearsExperience" type="number" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Cities Covered</label><input id="setStatCitiesCovered" type="number" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+        </div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Video Section</h3>
+        <p class="text-xs text-navy/45 mb-5">Leave the embed URL blank to keep the "add your video" placeholder.</p>
+        <div class="grid gap-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Video Embed URL</label><input id="setVideoEmbedUrl" type="text" placeholder="https://www.youtube.com/embed/XXXXXXXXXXX" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Title</label><input id="setVideoTitle" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+            <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Subtitle</label><input id="setVideoSubtitle" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Contact Info</h3>
+        <p class="text-xs text-navy/45 mb-5">Used in the contact section, footer, and floating buttons.</p>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Phone (primary)</label><input id="setPhone" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Phone (mobile)</label><input id="setPhone2" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Email</label><input id="setEmail" type="email" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">WhatsApp Number (digits only)</label><input id="setWhatsapp" type="text" placeholder="639171234567" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Messenger Link</label><input id="setMessengerUrl" type="text" placeholder="https://m.me/YourPageName" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div class="sm:col-span-2"><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Office Address</label><input id="setAddress" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+          <div class="sm:col-span-2"><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Business Hours</label><input id="setHours" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>
+        </div>
+      </div>
+
+      <div class="card p-6 sm:p-8">
+        <h3 class="font-serif text-xl font-semibold text-navy mb-1">Section Visibility</h3>
+        <p class="text-xs text-navy/45 mb-5">Turn off any section you haven't set up yet — it disappears from the live site entirely until you switch it back on.</p>
+        <div id="sectionVisibilityGrid" class="grid sm:grid-cols-2 gap-3"></div>
+      </div>
+
+      <button id="saveSettingsBtn" class="w-full sm:w-auto bg-navy text-white text-xs font-bold tracking-wider uppercase px-8 py-4 rounded-full hover:bg-navy-light transition-colors">Save All Settings</button>
+    </div>
+    <!-- ============ END SETTINGS VIEW ============ -->
+
+    <!-- ============ CONTENT VIEW (agents / testimonials / services / whyChooseUs / blog / faq) ============ -->
+    <div id="contentView" class="hidden">
+      <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
+        <button data-collection="agents" class="content-pill shrink-0 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase bg-navy text-white transition-colors">Agents</button>
+        <button data-collection="testimonials" class="content-pill shrink-0 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase bg-white text-navy/60 border border-navy/12 transition-colors">Testimonials</button>
+        <button data-collection="services" class="content-pill shrink-0 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase bg-white text-navy/60 border border-navy/12 transition-colors">Services</button>
+        <button data-collection="whyChooseUs" class="content-pill shrink-0 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase bg-white text-navy/60 border border-navy/12 transition-colors">Why Choose Us</button>
+        <button data-collection="blog" class="content-pill shrink-0 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase bg-white text-navy/60 border border-navy/12 transition-colors">Blog</button>
+        <button data-collection="faq" class="content-pill shrink-0 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide uppercase bg-white text-navy/60 border border-navy/12 transition-colors">FAQ</button>
+      </div>
+
+      <div class="flex justify-end mb-5">
+        <button id="addContentBtn" class="flex items-center justify-center gap-2 bg-gold text-navy text-xs font-bold tracking-wide uppercase px-5 py-3 rounded-lg hover:bg-gold-light transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg> <span id="addContentBtnLabel">Add Agent</span>
+        </button>
+      </div>
+
+      <div id="contentGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      <div id="contentEmptyState" class="hidden card p-12 text-center"><p class="text-navy/50 text-sm">Nothing here yet — add your first item.</p></div>
+      <div id="contentLoadingState" class="card p-12 text-center">
+        <svg class="w-8 h-8 mx-auto text-gold spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/></svg>
+        <p class="text-navy/40 text-xs mt-3">Loading…</p>
+      </div>
+    </div>
+    <!-- ============ END CONTENT VIEW ============ -->
+
+  </main>
+</div>
+
+<!-- =========================================================
+     LEAD DETAIL / EDIT MODAL
+========================================================== -->
+<div id="leadModal" class="fixed inset-0 z-[100] hidden">
+  <div id="leadModalBackdrop" class="absolute inset-0 bg-navy/60 backdrop-blur-sm"></div>
+  <div class="absolute inset-0 flex items-end sm:items-center justify-center p-0 sm:p-6">
+    <div class="bg-white w-full sm:max-w-lg sm:rounded-2xl max-h-[90vh] overflow-y-auto shadow-luxury fade-in">
+      <div class="p-6 sm:p-8">
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <p id="lmSource" class="text-gold text-[11px] font-bold tracking-wider uppercase mb-1"></p>
+            <h3 id="lmName" class="font-serif text-2xl font-semibold text-navy"></h3>
+            <p id="lmDate" class="text-xs text-navy/40 mt-1"></p>
+          </div>
+          <button id="leadModalClose" class="w-9 h-9 rounded-full bg-navy/5 flex items-center justify-center hover:bg-navy/10"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <a id="lmPhone" href="#" class="flex items-center gap-2 bg-cream rounded-lg px-4 py-3 text-sm hover:bg-gold/10 transition-colors">
+            <svg class="w-4 h-4 text-gold shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13 1 .36 1.94.68 2.85a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.23-1.25a2 2 0 0 1 2.11-.45c.91.32 1.85.55 2.85.68A2 2 0 0 1 22 16.92z"/></svg>
+            <span class="truncate">—</span>
+          </a>
+          <a id="lmEmail" href="#" class="flex items-center gap-2 bg-cream rounded-lg px-4 py-3 text-sm hover:bg-gold/10 transition-colors">
+            <svg class="w-4 h-4 text-gold shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></svg>
+            <span class="truncate">—</span>
+          </a>
+        </div>
+
+        <div id="lmInterestWrap" class="mb-6">
+          <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">Interest / Property</p>
+          <p id="lmInterest" class="text-sm text-navy/75"></p>
+        </div>
+
+        <div id="lmMessageWrap" class="mb-6">
+          <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">Message</p>
+          <p id="lmMessage" class="text-sm text-navy/75 leading-relaxed bg-cream rounded-lg p-4"></p>
+        </div>
+
+        <div class="mb-6">
+          <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">Status</p>
+          <div class="flex gap-2">
+            <button data-status="New" class="lmStatusBtn flex-1 text-xs font-bold uppercase tracking-wide py-2.5 rounded-lg border-2 transition-colors">New</button>
+            <button data-status="Contacted" class="lmStatusBtn flex-1 text-xs font-bold uppercase tracking-wide py-2.5 rounded-lg border-2 transition-colors">Contacted</button>
+            <button data-status="Closed" class="lmStatusBtn flex-1 text-xs font-bold uppercase tracking-wide py-2.5 rounded-lg border-2 transition-colors">Closed</button>
+          </div>
+        </div>
+
+        <div class="mb-7">
+          <p class="text-[11px] tracking-wide uppercase text-navy/45 font-semibold mb-1.5">Internal Notes</p>
+          <textarea id="lmNotes" rows="3" placeholder="Add a note for your team..." class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea>
+        </div>
+
+        <div class="flex gap-3">
+          <button id="lmSaveBtn" class="flex-1 bg-navy text-white text-xs font-bold tracking-wider uppercase py-3.5 rounded-full hover:bg-navy-light transition-colors">Save Changes</button>
+          <button id="lmDeleteBtn" class="px-5 border-2 border-red-200 text-red-600 text-xs font-bold tracking-wider uppercase py-3.5 rounded-full hover:bg-red-50 transition-colors">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     PROPERTY ADD/EDIT MODAL
+========================================================== -->
+<div id="propertyModal" class="fixed inset-0 z-[100] hidden">
+  <div id="propertyModalBackdrop" class="absolute inset-0 bg-navy/60 backdrop-blur-sm"></div>
+  <div class="absolute inset-0 flex items-end sm:items-center justify-center p-0 sm:p-6">
+    <div class="bg-white w-full sm:max-w-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto shadow-luxury fade-in">
+      <div class="p-6 sm:p-8">
+        <div class="flex items-center justify-between mb-6">
+          <h3 id="pmTitle" class="font-serif text-2xl font-semibold text-navy">Add Property</h3>
+          <button id="propertyModalClose" class="w-9 h-9 rounded-full bg-navy/5 flex items-center justify-center hover:bg-navy/10"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+
+        <form id="propertyForm" class="space-y-5">
+          <input type="hidden" id="pfId">
+
+          <div>
+            <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-2">Photos</label>
+            <div id="pfPhotosGrid" class="flex flex-wrap gap-3 mb-3"></div>
+            <label class="inline-flex items-center gap-2 text-xs font-bold tracking-wide uppercase text-navy bg-cream border border-navy/15 px-4 py-2.5 rounded-lg cursor-pointer hover:bg-gold/10 transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              Add Photo
+              <input id="pfPhotoInput" type="file" accept="image/*" class="hidden">
+            </label>
+            <span id="pfPhotoUploading" class="hidden text-xs text-navy/45 ml-2">Uploading…</span>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Property Name</label>
+              <input id="pfName" required type="text" placeholder="e.g. Modern Luxury Villa" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+            </div>
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Location</label>
+              <input id="pfLoc" required type="text" placeholder="e.g. Ayala Alabang, Muntinlupa City" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Category</label>
+              <select id="pfCategory" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+                <option value="house">House &amp; Lot</option>
+                <option value="condo">Condominium</option>
+                <option value="commercial">Commercial</option>
+                <option value="villa">Luxury Villa</option>
+                <option value="beach">Beachfront</option>
+                <option value="lot">Lot</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Status</label>
+              <select id="pfStatus" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+                <option value="Active">Active</option>
+                <option value="Reserved">Reserved</option>
+                <option value="Sold">Sold</option>
+                <option value="Draft">Draft</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Price (₱)</label>
+              <input id="pfPrice" required type="number" min="0" step="1000" placeholder="5000000" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Beds</label>
+              <input id="pfBeds" type="number" min="0" placeholder="0" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+            </div>
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Baths</label>
+              <input id="pfBaths" type="number" min="0" placeholder="0" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+            </div>
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Garage</label>
+              <input id="pfGarage" type="number" min="0" placeholder="0" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+            </div>
+            <div>
+              <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Lot / Floor (sqm)</label>
+              <input id="pfLot" type="number" min="0" placeholder="Lot sqm" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold mb-2">
+              <input id="pfFloor" type="number" min="0" placeholder="Floor sqm" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Description</label>
+            <textarea id="pfDesc" rows="3" placeholder="A short, evocative description of the property..." class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">Features (one per line)</label>
+            <textarea id="pfFeatures" rows="4" placeholder="Infinity pool & deck&#10;Smart home automation&#10;4-car garage" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none"></textarea>
+          </div>
+
+          <label class="flex items-center gap-2.5 text-sm text-navy/70">
+            <input id="pfFeatured" type="checkbox" class="rounded"> Feature this property prominently
+          </label>
+
+          <div class="flex gap-3 pt-2">
+            <button type="submit" id="pfSaveBtn" class="flex-1 bg-navy text-white text-xs font-bold tracking-wider uppercase py-3.5 rounded-full hover:bg-navy-light transition-colors">Save Property</button>
+            <button type="button" id="pfDeleteBtn" class="hidden px-5 border-2 border-red-200 text-red-600 text-xs font-bold tracking-wider uppercase py-3.5 rounded-full hover:bg-red-50 transition-colors">Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     CONTENT ITEM MODAL (generic — form is built dynamically per collection)
+========================================================== -->
+<div id="contentModal" class="fixed inset-0 z-[100] hidden">
+  <div id="contentModalBackdrop" class="absolute inset-0 bg-navy/60 backdrop-blur-sm"></div>
+  <div class="absolute inset-0 flex items-end sm:items-center justify-center p-0 sm:p-6">
+    <div class="bg-white w-full sm:max-w-lg sm:rounded-2xl max-h-[92vh] overflow-y-auto shadow-luxury fade-in">
+      <div class="p-6 sm:p-8">
+        <div class="flex items-center justify-between mb-6">
+          <h3 id="cmTitle" class="font-serif text-2xl font-semibold text-navy">Add Item</h3>
+          <button id="contentModalClose" class="w-9 h-9 rounded-full bg-navy/5 flex items-center justify-center hover:bg-navy/10"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+        <form id="contentForm" class="space-y-5">
+          <input type="hidden" id="cfId">
+          <div id="cfFields" class="space-y-5"></div>
+          <label class="flex items-center gap-2.5 text-sm text-navy/70">
+            <input id="cfActive" type="checkbox" checked class="rounded"> Visible on the website
+          </label>
+          <div class="flex gap-3 pt-2">
+            <button type="submit" id="cfSaveBtn" class="flex-1 bg-navy text-white text-xs font-bold tracking-wider uppercase py-3.5 rounded-full hover:bg-navy-light transition-colors">Save</button>
+            <button type="button" id="cfDeleteBtn" class="hidden px-5 border-2 border-red-200 text-red-600 text-xs font-bold tracking-wider uppercase py-3.5 rounded-full hover:bg-red-50 transition-colors">Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] hidden bg-navy text-white text-sm font-medium px-6 py-3.5 rounded-full shadow-luxury"></div>
+
+<script>
+/* =========================================================
+   CONNECTION — the Web App URL lives in localStorage on this
+   device, entered once through the Connect screen below. Never
+   hardcoded in this file.
+========================================================== */
+const GAS_URL_STORAGE_KEY = 'prestige-admin-gas-url';
+let GAS_WEB_APP_URL = localStorage.getItem(GAS_URL_STORAGE_KEY) || '';
+
+function showConnectScreen(){
+  document.getElementById('connectScreen').classList.remove('hidden');
+  document.getElementById('dashboard').classList.add('hidden');
+  const saved = localStorage.getItem(GAS_URL_STORAGE_KEY);
+  if(saved) document.getElementById('connectUrlInput').value = saved;
+}
+function showDashboard(){
+  document.getElementById('connectScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('connectionUrlDisplay').value = GAS_WEB_APP_URL;
+  loadAll();
+}
+
+document.getElementById('connectForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = document.getElementById('connectUrlInput').value.trim();
+  const btn = document.getElementById('connectBtn');
+  const errorEl = document.getElementById('connectError');
+  errorEl.classList.add('hidden');
+  btn.textContent = 'Connecting…'; btn.disabled = true;
+  try{
+    const res = await fetch(`${url}?action=getSettings`);
+    const json = await res.json();
+    if(!json.success) throw new Error();
+    GAS_WEB_APP_URL = url;
+    localStorage.setItem(GAS_URL_STORAGE_KEY, url);
+    showDashboard();
+  }catch(err){
+    errorEl.classList.remove('hidden');
+  }finally{
+    btn.textContent = 'Connect'; btn.disabled = false;
+  }
+});
+
+document.getElementById('changeConnectionBtn').addEventListener('click', () => {
+  if(!confirm('Disconnect this device from your backend? You\'ll need to paste the Web App URL again to reconnect.')) return;
+  localStorage.removeItem(GAS_URL_STORAGE_KEY);
+  GAS_WEB_APP_URL = '';
+  document.getElementById('connectUrlInput').value = '';
+  showConnectScreen();
+});
+
+document.getElementById('copyUrlBtn').addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText(GAS_WEB_APP_URL);
+    const btn = document.getElementById('copyUrlBtn');
+    const original = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(()=> btn.textContent = original, 1800);
+  }catch(err){ showToast('Could not copy — select and copy manually', true); }
+});
+
+/* =========================================================
+   DATA STATE
+========================================================== */
+
+let allLeads = [];
+let activeLeadId = null;
+
+/* =========================================================
+   API HELPER
+========================================================== */
+async function api(action, extra = {}) {
+  if (!GAS_WEB_APP_URL) {
+    throw new Error('Not connected — reconnect from the Connection card in Settings.');
+  }
+  const params = new URLSearchParams({ action, ...extra });
+  const res = await fetch(`${GAS_WEB_APP_URL}?${params.toString()}`);
+  if (!res.ok) throw new Error('Network error');
+  return res.json();
+}
+function withData(obj) {
+  return { data: JSON.stringify(obj) };
+}
+
+/* =========================================================
+   TOAST
+========================================================== */
+let toastTimer;
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  t.style.background = isError ? '#B91C1C' : '#071A35';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+/* =========================================================
+   LOAD DATA
+========================================================== */
+async function loadAll() {
+  document.getElementById('loadingState').classList.remove('hidden');
+  document.getElementById('emptyState').classList.add('hidden');
+  try {
+    const [leadsRes, statsRes] = await Promise.all([api('getLeads'), api('getStats')]);
+    if (leadsRes.success) { allLeads = leadsRes.leads; populateSourceFilter(); renderLeads(); }
+    if (statsRes.success) renderStats(statsRes.stats);
+  } catch (err) {
+    showToast(err.message || 'Failed to load leads', true);
+  } finally {
+    document.getElementById('loadingState').classList.add('hidden');
+  }
+}
+
+function renderStats(s) {
+  document.getElementById('statTotal').textContent = s.total;
+  document.getElementById('statNew').textContent = s.newCount;
+  document.getElementById('statContacted').textContent = s.contacted;
+  document.getElementById('statWeek').textContent = s.thisWeek;
+  document.getElementById('statNewsletter').textContent = s.newsletter;
+}
+
+function populateSourceFilter() {
+  const sel = document.getElementById('sourceFilter');
+  const sources = [...new Set(allLeads.map(l => l.source).filter(Boolean))];
+  sel.innerHTML = '<option value="all">All Sources</option>' + sources.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+/* =========================================================
+   RENDER LEADS (filtered)
+========================================================== */
+function getFilteredLeads() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const status = document.getElementById('statusFilter').value;
+  const source = document.getElementById('sourceFilter').value;
+  return allLeads.filter(l => {
+    if (status !== 'all' && l.status !== status) return false;
+    if (source !== 'all' && l.source !== source) return false;
+    if (q && !(`${l.name} ${l.phone} ${l.email}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+function fmtDate(iso) {
+  try { return new Date(iso).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+  catch(e){ return iso; }
+}
+
+function renderLeads() {
+  const filtered = getFilteredLeads();
+  const tbody = document.getElementById('leadsTableBody');
+  const cards = document.getElementById('leadsCards');
+  document.getElementById('emptyState').classList.toggle('hidden', filtered.length > 0);
+
+  tbody.innerHTML = filtered.map(l => `
+    <tr class="cursor-pointer" data-open="${l.id}">
+      <td class="whitespace-nowrap text-navy/50">${fmtDate(l.timestamp)}</td>
+      <td class="font-semibold">${escapeHtml(l.name)}</td>
+      <td class="text-navy/60">${escapeHtml(l.phone || l.email || '—')}</td>
+      <td class="text-navy/60">${escapeHtml(l.source)}${l.interest ? ' · ' + escapeHtml(l.interest) : ''}</td>
+      <td><span class="status-${l.status} text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full">${l.status}</span></td>
+      <td class="text-right text-gold">→</td>
+    </tr>`).join('');
+
+  cards.innerHTML = filtered.map(l => `
+    <div class="card p-4 cursor-pointer" data-open="${l.id}">
+      <div class="flex items-start justify-between mb-2">
+        <div>
+          <p class="font-semibold text-sm">${escapeHtml(l.name)}</p>
+          <p class="text-xs text-navy/45">${fmtDate(l.timestamp)}</p>
+        </div>
+        <span class="status-${l.status} text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shrink-0">${l.status}</span>
+      </div>
+      <p class="text-xs text-navy/60 mb-1">${escapeHtml(l.phone || l.email || '—')}</p>
+      <p class="text-xs text-navy/45">${escapeHtml(l.source)}${l.interest ? ' · ' + escapeHtml(l.interest) : ''}</p>
+    </div>`).join('');
+
+  document.querySelectorAll('[data-open]').forEach(el => {
+    el.addEventListener('click', () => openLeadModal(el.dataset.open));
+  });
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+['searchInput','statusFilter','sourceFilter'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderLeads);
+  document.getElementById(id).addEventListener('change', renderLeads);
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  const icon = document.getElementById('refreshIcon');
+  icon.classList.add('spin');
+  loadAll().finally(() => setTimeout(()=> icon.classList.remove('spin'), 500));
+});
+
+/* =========================================================
+   LEAD MODAL
+========================================================== */
+function openLeadModal(id) {
+  const l = allLeads.find(x => x.id === id);
+  if (!l) return;
+  activeLeadId = id;
+
+  document.getElementById('lmSource').textContent = l.source;
+  document.getElementById('lmName').textContent = l.name;
+  document.getElementById('lmDate').textContent = fmtDate(l.timestamp);
+
+  const phoneEl = document.getElementById('lmPhone');
+  if (l.phone) { phoneEl.href = 'tel:' + l.phone; phoneEl.querySelector('span').textContent = l.phone; phoneEl.classList.remove('opacity-40','pointer-events-none'); }
+  else { phoneEl.href='#'; phoneEl.querySelector('span').textContent='No phone'; phoneEl.classList.add('opacity-40','pointer-events-none'); }
+
+  const emailEl = document.getElementById('lmEmail');
+  if (l.email) { emailEl.href = 'mailto:' + l.email; emailEl.querySelector('span').textContent = l.email; emailEl.classList.remove('opacity-40','pointer-events-none'); }
+  else { emailEl.href='#'; emailEl.querySelector('span').textContent='No email'; emailEl.classList.add('opacity-40','pointer-events-none'); }
+
+  document.getElementById('lmInterestWrap').classList.toggle('hidden', !l.interest);
+  document.getElementById('lmInterest').textContent = l.interest || '';
+
+  document.getElementById('lmMessageWrap').classList.toggle('hidden', !l.message);
+  document.getElementById('lmMessage').textContent = l.message || '';
+
+  document.getElementById('lmNotes').value = l.notes || '';
+  setStatusButtons(l.status);
+
+  document.getElementById('leadModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function setStatusButtons(active) {
+  document.querySelectorAll('.lmStatusBtn').forEach(btn => {
+    const isActive = btn.dataset.status === active;
+    btn.classList.toggle('bg-navy', isActive);
+    btn.classList.toggle('text-white', isActive);
+    btn.classList.toggle('border-navy', isActive);
+    btn.classList.toggle('border-navy/15', !isActive);
+    btn.classList.toggle('text-navy/60', !isActive);
+  });
+}
+document.querySelectorAll('.lmStatusBtn').forEach(btn => {
+  btn.addEventListener('click', () => setStatusButtons(btn.dataset.status));
+});
+
+function closeLeadModal() {
+  document.getElementById('leadModal').classList.add('hidden');
+  document.body.style.overflow = '';
+  activeLeadId = null;
+}
+document.getElementById('leadModalClose').addEventListener('click', closeLeadModal);
+document.getElementById('leadModalBackdrop').addEventListener('click', closeLeadModal);
+
+document.getElementById('lmSaveBtn').addEventListener('click', async () => {
+  const activeBtn = document.querySelector('.lmStatusBtn.bg-navy');
+  const status = activeBtn ? activeBtn.dataset.status : 'New';
+  const notes = document.getElementById('lmNotes').value;
+  const btn = document.getElementById('lmSaveBtn');
+  const original = btn.textContent;
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    const res = await api('updateLead', withData({ id: activeLeadId, status, notes }));
+    if (res.success) {
+      const l = allLeads.find(x => x.id === activeLeadId);
+      if (l) { l.status = status; l.notes = notes; }
+      renderLeads();
+      showToast('Lead updated');
+      closeLeadModal();
+    } else {
+      showToast(res.error || 'Failed to update', true);
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to update', true);
+  } finally {
+    btn.textContent = original; btn.disabled = false;
+  }
+});
+
+document.getElementById('lmDeleteBtn').addEventListener('click', async () => {
+  if (!confirm('Delete this lead permanently? This cannot be undone.')) return;
+  try {
+    const res = await api('deleteLead', withData({ id: activeLeadId }));
+    if (res.success) {
+      allLeads = allLeads.filter(x => x.id !== activeLeadId);
+      renderLeads();
+      showToast('Lead deleted');
+      closeLeadModal();
+    } else {
+      showToast(res.error || 'Failed to delete', true);
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to delete', true);
+  }
+});
+
+/* =========================================================
+   EXPORT CSV
+========================================================== */
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const rows = getFilteredLeads();
+  if (!rows.length) { showToast('No leads to export', true); return; }
+  const headers = ['Date','Name','Phone','Email','Source','Interest','Message','Status','Notes'];
+  const csv = [headers.join(',')].concat(rows.map(l => [
+    fmtDate(l.timestamp), l.name, l.phone, l.email, l.source, l.interest, l.message, l.status, l.notes
+  ].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `prestige-leads-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* =========================================================
+   TABS
+========================================================== */
+const VIEWS = { leads:'leadsView', properties:'propertiesView', settings:'settingsView', content:'contentView' };
+const TAB_BTNS = { leads:'tabLeadsBtn', properties:'tabPropertiesBtn', settings:'tabSettingsBtn', content:'tabContentBtn' };
+let propertiesLoaded = false, settingsLoaded = false, contentLoadedFor = {};
+
+function activateTab(tab){
+  Object.keys(VIEWS).forEach(key => {
+    const isActive = key === tab;
+    document.getElementById(VIEWS[key]).classList.toggle('hidden', !isActive);
+    const btn = document.getElementById(TAB_BTNS[key]);
+    btn.classList.toggle('bg-navy', isActive);
+    btn.classList.toggle('text-white', isActive);
+    btn.classList.toggle('text-navy/50', !isActive);
+  });
+  if(tab === 'properties' && !propertiesLoaded){ loadProperties(); }
+  if(tab === 'settings' && !settingsLoaded){ loadSettings(); }
+  if(tab === 'content' && !contentLoadedFor[activeCollection]){ loadContent(activeCollection); }
+}
+Object.keys(TAB_BTNS).forEach(key => {
+  document.getElementById(TAB_BTNS[key]).addEventListener('click', () => activateTab(key));
+});
+
+/* =========================================================
+   PROPERTIES: LOAD + RENDER
+========================================================== */
+let allProperties = [];
+const peso = n => '₱' + Number(n||0).toLocaleString('en-PH');
+const catLabel = { house:'House & Lot', condo:'Condominium', commercial:'Commercial', villa:'Luxury Villa', beach:'Beachfront', lot:'Lot' };
+
+async function loadProperties(){
+  document.getElementById('propLoadingState').classList.remove('hidden');
+  document.getElementById('propEmptyState').classList.add('hidden');
+  try{
+    const res = await api('getAllProperties');
+    if(res.success){ allProperties = res.properties; propertiesLoaded = true; renderProperties(); }
+    else showToast(res.error || 'Failed to load properties', true);
+  }catch(err){
+    showToast(err.message || 'Failed to load properties', true);
+  }finally{
+    document.getElementById('propLoadingState').classList.add('hidden');
+  }
+}
+
+function getFilteredProperties(){
+  const q = document.getElementById('propSearchInput').value.toLowerCase().trim();
+  const status = document.getElementById('propStatusFilter').value;
+  return allProperties.filter(p => {
+    if(status !== 'all' && p.status !== status) return false;
+    if(q && !(`${p.name} ${p.loc}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+const propStatusColor = { Active:'bg-emerald-100 text-emerald-700', Reserved:'bg-amber-100 text-amber-700', Sold:'bg-navy/10 text-navy/60', Draft:'bg-gray-100 text-gray-500' };
+
+function renderProperties(){
+  const filtered = getFilteredProperties();
+  document.getElementById('propEmptyState').classList.toggle('hidden', filtered.length > 0);
+  document.getElementById('propertiesGrid').innerHTML = filtered.map(p => `
+    <div class="card p-5 cursor-pointer" data-edit="${p.id}">
+      <div class="flex items-start justify-between mb-3">
+        <span class="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-navy/8 text-navy/60">${catLabel[p.category]||p.category}</span>
+        <span class="text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${propStatusColor[p.status]||''}">${p.status}${p.featured ? ' ★' : ''}</span>
+      </div>
+      <h4 class="font-serif text-lg font-semibold text-navy mb-1 leading-snug">${escapeHtml(p.name)}</h4>
+      <p class="text-xs text-navy/45 mb-3">${escapeHtml(p.loc)}</p>
+      <p class="font-serif text-xl text-gold-dark font-bold mb-3">${peso(p.price)}</p>
+      <div class="flex gap-4 text-[11px] text-navy/50 pt-3 border-t border-navy/8">
+        ${p.beds ? `<span>${p.beds} bd</span>` : ''}${p.baths ? `<span>${p.baths} ba</span>` : ''}${p.lot ? `<span>${p.lot} sqm lot</span>` : ''}${!p.lot && p.floor ? `<span>${p.floor} sqm</span>` : ''}
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('[data-edit]').forEach(el => el.addEventListener('click', () => openPropertyModal(el.dataset.edit)));
+}
+
+['propSearchInput','propStatusFilter'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderProperties);
+  document.getElementById(id).addEventListener('change', renderProperties);
+});
+
+/* =========================================================
+   PHOTO UPLOAD (shared by Properties, Settings, Content)
+   Resizes client-side before sending so uploads stay fast and
+   the Drive files stay small — same lesson learned on Client Pulse.
+========================================================== */
+function resizeImageToBase64(file, maxDim = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function apiPost(action, payload) {
+  if (!GAS_WEB_APP_URL) {
+    throw new Error('Not connected — reconnect from the Connection card in Settings.');
+  }
+  const res = await fetch(GAS_WEB_APP_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action, data: JSON.stringify(payload) })
+  });
+  if (!res.ok) throw new Error('Network error');
+  return res.json();
+}
+
+async function uploadPhotoFile(file) {
+  const base64 = await resizeImageToBase64(file);
+  const res = await apiPost('uploadPhoto', { base64, filename: file.name, mimeType: 'image/jpeg' });
+  if (!res.success) throw new Error(res.error || 'Upload failed');
+  return res.url;
+}
+
+/* =========================================================
+   PROPERTY MODAL (add / edit)
+========================================================== */
+const propertyModal = document.getElementById('propertyModal');
+const propertyForm = document.getElementById('propertyForm');
+let currentPropertyPhotos = [];
+
+function renderPropertyPhotos(){
+  const grid = document.getElementById('pfPhotosGrid');
+  grid.innerHTML = currentPropertyPhotos.map((url, i) => `
+    <div class="relative w-20 h-20 rounded-lg overflow-hidden border border-navy/10 group">
+      <img src="${url}" class="w-full h-full object-cover" loading="lazy">
+      ${i===0 ? '<span class="absolute bottom-0 inset-x-0 bg-navy/80 text-white text-[9px] text-center py-0.5">COVER</span>' : ''}
+      <button type="button" data-remove-photo="${i}" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+    </div>`).join('') || '<p class="text-xs text-navy/40">No photos yet.</p>';
+  grid.querySelectorAll('[data-remove-photo]').forEach(btn => {
+    btn.addEventListener('click', () => { currentPropertyPhotos.splice(Number(btn.dataset.removePhoto), 1); renderPropertyPhotos(); });
+  });
+}
+
+document.getElementById('pfPhotoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const uploadingEl = document.getElementById('pfPhotoUploading');
+  uploadingEl.classList.remove('hidden');
+  try {
+    const url = await uploadPhotoFile(file);
+    currentPropertyPhotos.push(url);
+    renderPropertyPhotos();
+  } catch (err) {
+    showToast(err.message || 'Photo upload failed', true);
+  } finally {
+    uploadingEl.classList.add('hidden');
+    e.target.value = '';
+  }
+});
+
+document.getElementById('addPropertyBtn').addEventListener('click', () => openPropertyModal(null));
+
+function openPropertyModal(id){
+  const p = id ? allProperties.find(x => x.id === id) : null;
+  document.getElementById('pmTitle').textContent = p ? 'Edit Property' : 'Add Property';
+  document.getElementById('pfId').value = p ? p.id : '';
+  document.getElementById('pfName').value = p ? p.name : '';
+  document.getElementById('pfLoc').value = p ? p.loc : '';
+  document.getElementById('pfCategory').value = p ? p.category : 'house';
+  document.getElementById('pfStatus').value = p ? p.status : 'Active';
+  document.getElementById('pfPrice').value = p ? p.price : '';
+  document.getElementById('pfBeds').value = p ? p.beds : '';
+  document.getElementById('pfBaths').value = p ? p.baths : '';
+  document.getElementById('pfGarage').value = p ? p.garage : '';
+  document.getElementById('pfLot').value = p ? p.lot : '';
+  document.getElementById('pfFloor').value = p ? p.floor : '';
+  document.getElementById('pfDesc').value = p ? p.desc : '';
+  document.getElementById('pfFeatures').value = p ? p.features.join('\n') : '';
+  document.getElementById('pfFeatured').checked = p ? !!p.featured : false;
+  document.getElementById('pfDeleteBtn').classList.toggle('hidden', !p);
+  currentPropertyPhotos = p && Array.isArray(p.photos) ? [...p.photos] : [];
+  renderPropertyPhotos();
+
+  propertyModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closePropertyModal(){
+  propertyModal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+document.getElementById('propertyModalClose').addEventListener('click', closePropertyModal);
+document.getElementById('propertyModalBackdrop').addEventListener('click', closePropertyModal);
+
+propertyForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('pfId').value;
+  const payload = {
+    id: id || undefined,
+    name: document.getElementById('pfName').value.trim(),
+    loc: document.getElementById('pfLoc').value.trim(),
+    category: document.getElementById('pfCategory').value,
+    status: document.getElementById('pfStatus').value,
+    price: document.getElementById('pfPrice').value,
+    beds: document.getElementById('pfBeds').value,
+    baths: document.getElementById('pfBaths').value,
+    garage: document.getElementById('pfGarage').value,
+    lot: document.getElementById('pfLot').value,
+    floor: document.getElementById('pfFloor').value,
+    desc: document.getElementById('pfDesc').value.trim(),
+    features: document.getElementById('pfFeatures').value.split('\n').map(s => s.trim()).filter(Boolean),
+    photos: currentPropertyPhotos,
+    featured: document.getElementById('pfFeatured').checked
+  };
+  const btn = document.getElementById('pfSaveBtn');
+  const original = btn.textContent;
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try{
+    const res = await apiPost(id ? 'updateProperty' : 'addProperty', payload);
+    if(res.success){
+      showToast(id ? 'Property updated' : 'Property added');
+      closePropertyModal();
+      loadProperties();
+    } else {
+      showToast(res.error || 'Failed to save property', true);
+    }
+  }catch(err){
+    showToast(err.message || 'Failed to save property', true);
+  }finally{
+    btn.textContent = original; btn.disabled = false;
+  }
+});
+
+document.getElementById('pfDeleteBtn').addEventListener('click', async () => {
+  const id = document.getElementById('pfId').value;
+  if(!id) return;
+  if(!confirm('Delete this property permanently? This cannot be undone.')) return;
+  try{
+    const res = await api('deleteProperty', withData({ id }));
+    if(res.success){
+      showToast('Property deleted');
+      closePropertyModal();
+      loadProperties();
+    } else {
+      showToast(res.error || 'Failed to delete', true);
+    }
+  }catch(err){
+    showToast(err.message || 'Failed to delete', true);
+  }
+});
+
+/* =========================================================
+   SETTINGS
+========================================================== */
+const SECTION_HEADLINE_SECTIONS = [
+  { key:'properties', label:'Featured Properties' },
+  { key:'whyChoose', label:'Why Choose Us' },
+  { key:'services', label:'Our Services' },
+  { key:'process', label:'Property Process' },
+  { key:'calculator', label:'Mortgage Calculator' },
+  { key:'agents', label:'Agents' },
+  { key:'testimonials', label:'Testimonials' },
+  { key:'map', label:'Property Map' },
+  { key:'blog', label:'Blog' },
+  { key:'faq', label:'FAQ' },
+  { key:'contact', label:'Contact' }
+];
+
+const SECTION_VISIBILITY_LIST = [
+  { key:'Hero', label:'Hero' },
+  { key:'About', label:'About' },
+  { key:'Properties', label:'Featured Properties' },
+  { key:'WhyChoose', label:'Why Choose Us' },
+  { key:'Services', label:'Our Services' },
+  { key:'Process', label:'Property Process' },
+  { key:'Calculator', label:'Mortgage Calculator' },
+  { key:'Agents', label:'Agents' },
+  { key:'Testimonials', label:'Testimonials' },
+  { key:'Video', label:'Video' },
+  { key:'Map', label:'Property Map' },
+  { key:'Blog', label:'Blog' },
+  { key:'Faq', label:'FAQ' },
+  { key:'Contact', label:'Contact' }
+];
+
+document.getElementById('sectionVisibilityGrid').innerHTML = SECTION_VISIBILITY_LIST.map(s => `
+  <label class="flex items-center justify-between gap-4 bg-cream rounded-lg px-4 py-3.5 cursor-pointer">
+    <span class="text-sm font-medium text-navy">${s.label}</span>
+    <span class="relative inline-flex items-center shrink-0">
+      <input type="checkbox" id="setShow${s.key}" class="sr-only peer" checked>
+      <span class="toggle-track w-11 h-6 bg-navy/20 peer-checked:bg-navy rounded-full block"></span>
+      <span class="toggle-knob absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full shadow peer-checked:translate-x-5"></span>
+    </span>
+  </label>`).join('');
+
+const SETTINGS_FIELD_MAP = {
+  brandName:'setBrandName', metaDescription:'setMetaDescription',
+  heroHeadline:'setHeroHeadline', heroSubheadline:'setHeroSubheadline',
+  aboutEyebrow:'setAboutEyebrow', aboutTitle:'setAboutTitle', aboutText:'setAboutText', missionText:'setMissionText',
+  visionText:'setVisionText', valuesText:'setValuesText',
+  statPropertiesSold:'setStatPropertiesSold', statHappyClients:'setStatHappyClients',
+  statYearsExperience:'setStatYearsExperience', statCitiesCovered:'setStatCitiesCovered',
+  videoEmbedUrl:'setVideoEmbedUrl', videoTitle:'setVideoTitle', videoSubtitle:'setVideoSubtitle',
+  phone:'setPhone', phone2:'setPhone2', email:'setEmail', whatsapp:'setWhatsapp', messengerUrl:'setMessengerUrl',
+  adminNotificationEmail:'setAdminNotificationEmail', driveFolderName:'setDriveFolderName',
+  address:'setAddress', hours:'setHours',
+  facebookUrl:'setFacebookUrl', instagramUrl:'setInstagramUrl', youtubeUrl:'setYoutubeUrl', linkedinUrl:'setLinkedinUrl'
+};
+// Section headlines are generated dynamically — add their eyebrow/headline keys too
+SECTION_HEADLINE_SECTIONS.forEach(s => {
+  SETTINGS_FIELD_MAP[s.key+'Eyebrow'] = 'setSH_'+s.key+'Eyebrow';
+  SETTINGS_FIELD_MAP[s.key+'Headline'] = 'setSH_'+s.key+'Headline';
+});
+
+// Build the Section Headlines form fields once, on script load
+document.getElementById('sectionHeadlinesGrid').innerHTML = SECTION_HEADLINE_SECTIONS.map(s => `
+  <div class="grid sm:grid-cols-2 gap-4 pb-5 border-b border-navy/8 last:border-0 last:pb-0">
+    <div>
+      <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">${s.label} — Label</label>
+      <input id="setSH_${s.key}Eyebrow" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+    </div>
+    <div>
+      <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">${s.label} — Heading</label>
+      <input id="setSH_${s.key}Headline" type="text" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold">
+    </div>
+  </div>`).join('');
+
+let currentSettings = {};
+
+async function loadSettings(){
+  try{
+    const res = await api('getSettings');
+    if(res.success){
+      currentSettings = res.settings;
+      settingsLoaded = true;
+      Object.keys(SETTINGS_FIELD_MAP).forEach(key => {
+        const el = document.getElementById(SETTINGS_FIELD_MAP[key]);
+        if(el) el.value = currentSettings[key] || '';
+      });
+      setPhotoPreview('setHeroPhotoPreview', currentSettings.heroPhoto);
+      setPhotoPreview('setAboutPhotoPreview', currentSettings.aboutPhoto);
+      SECTION_VISIBILITY_LIST.forEach(s => {
+        const el = document.getElementById('setShow'+s.key);
+        if(el) el.checked = currentSettings['show'+s.key] !== false;
+      });
+    }
+  }catch(err){
+    showToast(err.message || 'Failed to load settings', true);
+  }
+}
+
+function setPhotoPreview(elId, url){
+  const el = document.getElementById(elId);
+  if(url){ el.style.backgroundImage = `url('${url}')`; el.textContent = ''; }
+  else { el.style.backgroundImage = ''; el.textContent = 'No photo set'; }
+}
+
+document.getElementById('setHeroPhotoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if(!file) return;
+  try{ currentSettings.heroPhoto = await uploadPhotoFile(file); setPhotoPreview('setHeroPhotoPreview', currentSettings.heroPhoto); }
+  catch(err){ showToast(err.message || 'Upload failed', true); }
+  finally{ e.target.value=''; }
+});
+document.getElementById('setAboutPhotoInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if(!file) return;
+  try{ currentSettings.aboutPhoto = await uploadPhotoFile(file); setPhotoPreview('setAboutPhotoPreview', currentSettings.aboutPhoto); }
+  catch(err){ showToast(err.message || 'Upload failed', true); }
+  finally{ e.target.value=''; }
+});
+
+document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('saveSettingsBtn');
+  const original = btn.textContent;
+  const payload = Object.assign({}, currentSettings);
+  Object.keys(SETTINGS_FIELD_MAP).forEach(key => {
+    const el = document.getElementById(SETTINGS_FIELD_MAP[key]);
+    if(el) payload[key] = el.value;
+  });
+  SECTION_VISIBILITY_LIST.forEach(s => {
+    const el = document.getElementById('setShow'+s.key);
+    if(el) payload['show'+s.key] = el.checked;
+  });
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try{
+    const res = await apiPost('updateSettings', payload);
+    showToast(res.success ? 'Settings saved' : (res.error || 'Failed to save'), !res.success);
+  }catch(err){
+    showToast(err.message || 'Failed to save settings', true);
+  }finally{
+    btn.textContent = original; btn.disabled = false;
+  }
+});
+
+/* =========================================================
+   CONTENT (generic collections: agents, testimonials, services,
+   whyChooseUs, blog, faq)
+========================================================== */
+const COLLECTION_SCHEMAS = {
+  agents: { label:'Agent', fields:[
+    {key:'photo', type:'photo', label:'Photo'},
+    {key:'name', type:'text', label:'Name', required:true},
+    {key:'role', type:'text', label:'Role'},
+    {key:'experience', type:'text', label:'Experience', placeholder:'e.g. 12 Years Experience'},
+    {key:'specialization', type:'text', label:'Specialization'},
+    {key:'facebook', type:'text', label:'Facebook URL'},
+    {key:'messenger', type:'text', label:'Messenger URL'},
+    {key:'whatsapp', type:'text', label:'WhatsApp Number'},
+    {key:'email', type:'text', label:'Email'}
+  ], cardTitle:i=>i.name, cardSub:i=>i.role },
+  testimonials: { label:'Testimonial', fields:[
+    {key:'photo', type:'photo', label:'Photo'},
+    {key:'name', type:'text', label:'Client Name', required:true},
+    {key:'location', type:'text', label:'Location'},
+    {key:'rating', type:'number', label:'Rating (1–5)', min:1, max:5},
+    {key:'text', type:'textarea', label:'Testimonial Text', required:true}
+  ], cardTitle:i=>i.name, cardSub:i=>i.location },
+  services: { label:'Service', fields:[
+    {key:'title', type:'text', label:'Title', required:true},
+    {key:'description', type:'textarea', label:'Description'}
+  ], cardTitle:i=>i.title, cardSub:i=>i.description },
+  whyChooseUs: { label:'Card', fields:[
+    {key:'title', type:'text', label:'Title', required:true},
+    {key:'description', type:'textarea', label:'Description'}
+  ], cardTitle:i=>i.title, cardSub:i=>i.description },
+  blog: { label:'Post', fields:[
+    {key:'photo', type:'photo', label:'Photo'},
+    {key:'tag', type:'text', label:'Category Tag', placeholder:'e.g. Buying Guide'},
+    {key:'title', type:'text', label:'Title', required:true},
+    {key:'excerpt', type:'textarea', label:'Excerpt'}
+  ], cardTitle:i=>i.title, cardSub:i=>i.tag },
+  faq: { label:'Question', fields:[
+    {key:'question', type:'text', label:'Question', required:true},
+    {key:'answer', type:'textarea', label:'Answer', required:true}
+  ], cardTitle:i=>i.question, cardSub:i=>i.answer }
+};
+
+let activeCollection = 'agents';
+let currentCollectionItems = [];
+let currentContentPhoto = '';
+
+document.querySelectorAll('.content-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeCollection = btn.dataset.collection;
+    document.querySelectorAll('.content-pill').forEach(b => {
+      const active = b === btn;
+      b.classList.toggle('bg-navy', active); b.classList.toggle('text-white', active);
+      b.classList.toggle('bg-white', !active); b.classList.toggle('text-navy/60', !active); b.classList.toggle('border', !active); b.classList.toggle('border-navy/12', !active);
+    });
+    document.getElementById('addContentBtnLabel').textContent = 'Add ' + COLLECTION_SCHEMAS[activeCollection].label;
+    if(!contentLoadedFor[activeCollection]) loadContent(activeCollection); else renderContentGrid();
+  });
+});
+
+async function loadContent(type){
+  document.getElementById('contentLoadingState').classList.remove('hidden');
+  document.getElementById('contentEmptyState').classList.add('hidden');
+  document.getElementById('contentGrid').innerHTML = '';
+  try{
+    const res = await api('getAllCollection', { type });
+    if(res.success){ currentCollectionItems = res.items; contentLoadedFor[type] = true; renderContentGrid(); }
+    else showToast(res.error || 'Failed to load', true);
+  }catch(err){
+    showToast(err.message || 'Failed to load', true);
+  }finally{
+    document.getElementById('contentLoadingState').classList.add('hidden');
+  }
+}
+
+function renderContentGrid(){
+  const schema = COLLECTION_SCHEMAS[activeCollection];
+  const grid = document.getElementById('contentGrid');
+  document.getElementById('contentEmptyState').classList.toggle('hidden', currentCollectionItems.length > 0);
+  const hasPhoto = schema.fields.some(f => f.type === 'photo');
+  grid.innerHTML = currentCollectionItems.map(item => `
+    <div class="card p-5 cursor-pointer flex gap-4 items-start ${item.active ? '' : 'opacity-50'}" data-edit-content="${item.id}">
+      ${hasPhoto ? `<div class="w-14 h-14 rounded-lg overflow-hidden bg-navy/5 shrink-0 ${item[schema.fields.find(f=>f.type==='photo').key] ? '' : 'flex items-center justify-center text-navy/25'}" ${item[schema.fields.find(f=>f.type==='photo').key] ? `style="background-image:url('${item[schema.fields.find(f=>f.type==='photo').key]}');background-size:cover;background-position:center;"` : ''}>${item[schema.fields.find(f=>f.type==='photo').key] ? '' : '—'}</div>` : ''}
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold text-sm text-navy truncate">${escapeHtml(String(schema.cardTitle(item)||'Untitled'))}</p>
+        <p class="text-xs text-navy/50 line-clamp-2 mt-1">${escapeHtml(String(schema.cardSub(item)||''))}</p>
+        ${!item.active ? '<span class="inline-block mt-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Hidden</span>' : ''}
+      </div>
+    </div>`).join('');
+  grid.querySelectorAll('[data-edit-content]').forEach(el => el.addEventListener('click', () => openContentModal(el.dataset.editContent)));
+}
+
+document.getElementById('addContentBtn').addEventListener('click', () => openContentModal(null));
+
+function openContentModal(id){
+  const schema = COLLECTION_SCHEMAS[activeCollection];
+  const item = id ? currentCollectionItems.find(x => x.id === id) : null;
+  document.getElementById('cmTitle').textContent = (item ? 'Edit ' : 'Add ') + schema.label;
+  document.getElementById('cfId').value = item ? item.id : '';
+  document.getElementById('cfActive').checked = item ? !!item.active : true;
+  document.getElementById('cfDeleteBtn').classList.toggle('hidden', !item);
+  currentContentPhoto = item && item.photo ? item.photo : '';
+
+  const fieldsHtml = schema.fields.map(f => {
+    const val = item ? (item[f.key] ?? '') : '';
+    if(f.type === 'photo'){
+      return `<div>
+        <label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-2">${f.label}</label>
+        <div id="cfPhotoPreview" class="w-24 h-24 rounded-lg bg-navy/5 border border-navy/10 bg-cover bg-center mb-2 flex items-center justify-center text-navy/25 text-xs" ${currentContentPhoto ? `style="background-image:url('${currentContentPhoto}')"` : ''}>${currentContentPhoto ? '' : 'No photo'}</div>
+        <label class="inline-flex items-center gap-2 text-xs font-bold tracking-wide uppercase text-navy bg-cream border border-navy/15 px-4 py-2.5 rounded-lg cursor-pointer hover:bg-gold/10 transition-colors">Upload<input id="cfPhotoInput" type="file" accept="image/*" class="hidden"></label>
+      </div>`;
+    }
+    if(f.type === 'textarea'){
+      return `<div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">${f.label}</label><textarea id="cf_${f.key}" rows="3" ${f.required?'required':''} class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold resize-none">${escapeHtml(String(val))}</textarea></div>`;
+    }
+    const inputType = f.type === 'number' ? 'number' : 'text';
+    const extra = f.type === 'number' ? `min="${f.min||0}" ${f.max?`max="${f.max}"`:''}` : '';
+    return `<div><label class="block text-[11px] tracking-wide uppercase font-semibold text-navy/50 mb-1.5">${f.label}</label><input id="cf_${f.key}" type="${inputType}" ${extra} ${f.required?'required':''} placeholder="${f.placeholder||''}" value="${escapeHtml(String(val))}" class="w-full rounded-lg border border-navy/12 px-4 py-3 text-sm outline-none focus:border-gold"></div>`;
+  }).join('');
+  document.getElementById('cfFields').innerHTML = fieldsHtml;
+
+  const photoInput = document.getElementById('cfPhotoInput');
+  if(photoInput){
+    photoInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0]; if(!file) return;
+      try{
+        currentContentPhoto = await uploadPhotoFile(file);
+        const preview = document.getElementById('cfPhotoPreview');
+        preview.style.backgroundImage = `url('${currentContentPhoto}')`;
+        preview.textContent = '';
+      }catch(err){ showToast(err.message || 'Upload failed', true); }
+      finally{ e.target.value=''; }
+    });
+  }
+
+  document.getElementById('contentModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeContentModal(){
+  document.getElementById('contentModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+document.getElementById('contentModalClose').addEventListener('click', closeContentModal);
+document.getElementById('contentModalBackdrop').addEventListener('click', closeContentModal);
+
+document.getElementById('contentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const schema = COLLECTION_SCHEMAS[activeCollection];
+  const id = document.getElementById('cfId').value;
+  const payload = { id: id || undefined, active: document.getElementById('cfActive').checked };
+  schema.fields.forEach(f => {
+    if(f.type === 'photo') payload.photo = currentContentPhoto;
+    else payload[f.key] = document.getElementById('cf_'+f.key).value;
+  });
+  const btn = document.getElementById('cfSaveBtn');
+  const original = btn.textContent;
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try{
+    const res = await apiPost(id ? 'updateCollectionItem' : 'addCollectionItem', Object.assign({ type: activeCollection }, payload));
+    if(res.success){
+      showToast(id ? 'Saved' : 'Added');
+      closeContentModal();
+      loadContent(activeCollection);
+    } else {
+      showToast(res.error || 'Failed to save', true);
+    }
+  }catch(err){
+    showToast(err.message || 'Failed to save', true);
+  }finally{
+    btn.textContent = original; btn.disabled = false;
+  }
+});
+
+document.getElementById('cfDeleteBtn').addEventListener('click', async () => {
+  const id = document.getElementById('cfId').value;
+  if(!id) return;
+  if(!confirm('Delete this item permanently?')) return;
+  try{
+    const res = await api('deleteCollectionItem', { type: activeCollection, data: JSON.stringify({ id }) });
+    if(res.success){
+      showToast('Deleted');
+      closeContentModal();
+      loadContent(activeCollection);
+    } else {
+      showToast(res.error || 'Failed to delete', true);
+    }
+  }catch(err){
+    showToast(err.message || 'Failed to delete', true);
+  }
+});
+
+/* =========================================================
+   INIT — show the dashboard if a Web App URL is already saved
+   on this device, otherwise ask for one first
+========================================================== */
+if(GAS_WEB_APP_URL){ showDashboard(); } else { showConnectScreen(); }
+</script>
+</body>
+</html>
